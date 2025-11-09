@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini E‑Commerce Storefront (Vanilla)</title>
+  <style>
+    /* --- Fix select dropdown visibility on dark background --- */
+    select {
+      background-color: #0b1220;
+      color: #e6eef8;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      appearance: none;
+    }
+
+    select option {
+      background-color: #0b1220;
+      color: #e6eef8;
+    }
+
+    select option:hover,
+    select option:checked {
+      background-color: #1e293b;
+      color: #ffffff;
+    }
+    :root{--accent:#6b46c1;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial; margin:0;background:linear-gradient(180deg,#071230 0%, #071827 100%);color:#e6eef8}
+    header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:rgba(255,255,255,0.02);backdrop-filter:blur(4px)}
+    header h1{margin:0;font-size:1.05rem}
+    .controls{display:flex;gap:.5rem;align-items:center}
+    button, input, select{font-family:inherit}
+    .search{padding:.5rem .75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .main{display:grid;grid-template-columns:1fr 320px;gap:1rem;padding:1rem}
+    .catalog{padding:1rem;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px}
+    .filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+    .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.02));padding:0.75rem;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .card img{width:100%;height:140px;object-fit:cover;border-radius:8px}
+    .card h3{margin:.5rem 0 0;font-size:0.95rem}
+    .price{font-weight:700;margin-top:.25rem}
+    .muted{color:var(--muted);font-size:.9rem}
+    /* Sidebar / Cart */
+    .sidebar{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:1rem;border-radius:12px;height:fit-content}
+    .cart-item{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+    .cart-item img{width:56px;height:50px;object-fit:cover;border-radius:6px}
+    .qty{display:flex;align-items:center;gap:.25rem}
+    .big{font-size:1.15rem}
+    .btn{background:var(--accent);border:none;color:white;padding:.5rem .6rem;border-radius:8px;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    /* modals */
+    .overlay{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;padding:2rem;z-index:50}
+    .overlay.active{display:flex}
+    .modal{background:#041021;padding:1rem;border-radius:12px;max-width:880px;width:100%;box-shadow:0 10px 30px rgba(2,6,23,.6)}
+    .flex{display:flex;gap:1rem}
+    .col{flex:1}
+    form input, form textarea{width:100%;padding:.5rem;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    footer{padding:1rem;text-align:center;color:var(--muted)}
+    .admin-badge{background:rgba(107,70,193,0.12);padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
+    .small{font-size:.85rem}
+    @media (max-width:900px){.main{grid-template-columns:1fr}.sidebar{order:2}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1> <u>RoTsxD</u> Mini Storefront</h1>
+    <div class="controls">
+      <input id="q" class="search" placeholder="Search products..." />
+      <select id="categorySelect" class="search">
+        <option value="all">All categories</option>
+      </select>
+      <button id="loginBtn" class="btn ghost">Login / Register</button>
+      <button id="adminBtn" class="btn ghost">Admin</button>
+      <button id="clearStorage" class="btn ghost">Reset Demo</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="catalog">
+      <div class="filters">
+        <label class="muted small">Sort:</label>
+        <select id="sort" class="search small">
+          <option value="new">Newest</option>
+          <option value="price-asc">Price: Low → High</option>
+          <option value="price-desc">Price: High → Low</option>
+        </select>
+        <label class="muted small">Price max:</label>
+        <input id="priceMax" type="number" class="search small" placeholder="e.g. 5000" />
+      </div>
+
+      <div id="productGrid" class="product-grid"></div>
+    </section>
+
+    <aside class="sidebar">
+      <h3>Cart <span id="cartCount" class="muted">(0)</span></h3>
+      <div id="cartList"></div>
+      <div style="margin-top:.5rem">
+        <div class="muted small">Subtotal: <span id="subtotal">₹0</span></div>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem">
+          <button id="checkoutBtn" class="btn">Checkout</button>
+          <button id="ordersBtn" class="btn ghost">My Orders</button>
+          <button id="emptyCart" class="btn ghost">Empty</button>
+        </div>
+      </div>
+      <hr style="margin:0.8rem 0;border-color:rgba(255,255,255,0.03)" />
+      <div id="userArea"></div>
+    </aside>
+  </div>
+
+  <div id="overlay" class="overlay"><div class="modal" id="modalContent"></div></div>
+
+  <footer>© Rohit Kumar</footer>
+
+  <script>
+  /* ----------------------------- Demo data & storage ---------------------------- */
+  const DEMO_PRODUCTS = [
+    {id:'p1',title:'Nordic Thermos Bottle 750ml',price:799,category:'Home',rating:4.4,image:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcR8T7C1NxTMnLXLHDwoLNcO2d6Pva7EmsMQ&s',desc:'Stainless steel insulation bottle for hot & cold.'},
+    {id:'p2',title:'Minimal Desk Lamp',price:1299,category:'Home',rating:4.6,image:'https://rukminim2.flixcart.com/image/480/640/xif0q/table-lamp/r/x/n/nordic-style-metal-desk-lamp-modern-minimalist-lamp-with-solid-original-imahcrf6tsaqyrgw.jpeg?q=90',desc:'LED desk lamp with dimmer and adjustable arm.'},
+    {id:'p3',title:'Wireless Headphones',price:2499,category:'Electronics',rating:4.3,image:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRED5aOGaOE-qYm_zFRdm181x8S-ZqJhI3hpw&s',desc:'Bluetooth on-ear with great battery life.'},
+    {id:'p4',title:'Classic Sneakers',price:2199,category:'Fashion',rating:4.5,image:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0JqZLhfgPmbpgU_DkqRLZcHx5YYru0ebLuQ&s',desc:'Comfortable casual sneakers for daily use.'},
+    {id:'p5',title:'Canvas Backpack',price:1899,category:'Accessories',rating:4.2,image:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRV0iTVvzy-EDKq95INONhfhwdNaAf5cOEj-g&s',desc:'Durable, water-resistant backpack.'},
+  ];
+
+  const storage = {
+    get(k){return JSON.parse(localStorage.getItem(k)||'null')},
+    set(k,v){localStorage.setItem(k,JSON.stringify(v))},
+    del(k){localStorage.removeItem(k)}
+  };
+
+  function initDemo(){
+    if(!storage.get('products')) storage.set('products',DEMO_PRODUCTS);
+    if(!storage.get('users')) storage.set('users',[{username:'admin',password:'admin123',isAdmin:true,orders:[]}]);
+    if(!storage.get('cart')) storage.set('cart',{});
+    if(!storage.get('orders')) storage.set('orders',[]);
+  }
+
+  initDemo();
+
+  /* ----------------------------- Helpers ---------------------------- */
+  function byId(id){return document.getElementById(id)}
+  function format(v){return '₹'+Number(v).toLocaleString('en-IN')}
+
+  /* ----------------------------- Render Products ---------------------------- */
+  function getProducts(){return storage.get('products')||[]} 
+
+  function renderCategoryOptions(){
+    const sel = byId('categorySelect');
+    const cats = Array.from(new Set(getProducts().map(p=>p.category)));
+    sel.innerHTML = '<option value="all">All categories</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+
+  function renderProducts(){
+    const q = byId('q').value.toLowerCase();
+    const cat = byId('categorySelect').value;
+    const sort = byId('sort').value;
+    const priceMax = Number(byId('priceMax').value) || Infinity;
+    let list = getProducts().filter(p=> (p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)) && (cat==='all' || p.category===cat) && p.price<=priceMax);
+    if(sort==='price-asc') list.sort((a,b)=>a.price-b.price)
+    if(sort==='price-desc') list.sort((a,b)=>b.price-a.price)
+    if(sort==='new') list.sort((a,b)=> (a.id>b.id? -1:1));
+
+    const grid = byId('productGrid');
+    grid.innerHTML = list.map(p=>`
+      <div class="card">
+        <img src="${p.image}" loading="lazy" alt="${p.title}" />
+        <h3>${p.title}</h3>
+        <div class="muted small">${p.category} · ⭐ ${p.rating}</div>
+        <div class="price">${format(p.price)}</div>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn" data-id="${p.id}" onclick="openDetails('${p.id}')">View</button>
+          <button class="btn ghost" onclick="addToCart('${p.id}',1)">Add</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  /* ----------------------------- Product details modal ---------------------------- */
+  function openDetails(id){
+    const p = getProducts().find(x=>x.id===id);
+    const modal = byId('modalContent');
+    modal.innerHTML = `
+      <div style="display:flex;gap:1rem;align-items:flex-start">
+        <img src="${p.image}" style="width:220px;height:220px;object-fit:cover;border-radius:10px"/>
+        <div class="col">
+          <h2>${p.title} <span class="muted small">· ${p.category}</span></h2>
+          <div class="muted">⭐ ${p.rating}</div>
+          <p style="margin-top:.5rem">${p.desc}</p>
+          <div class="price">${format(p.price)}</div>
+          <div style="margin-top:.5rem;display:flex;gap:.5rem;align-items:center">
+            <input id="detQty" type="number" min="1" value="1" style="width:72px;padding:.4rem;border-radius:8px"/>
+            <button class="btn" onclick="addToCart('${p.id}', +document.getElementById('detQty').value); closeModal()">Add to cart</button>
+            <button class="btn ghost" onclick="closeModal()">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    showModal();
+  }
+
+  function showModal(){document.getElementById('overlay').classList.add('active')}
+  function closeModal(){document.getElementById('overlay').classList.remove('active');byId('modalContent').innerHTML=''}
+  document.getElementById('overlay').addEventListener('click', e=>{if(e.target.id==='overlay') closeModal()})
+
+  /* ----------------------------- Cart ---------------------------- */
+  function getCart(){return storage.get('cart')||{}};
+  function saveCart(c){storage.set('cart',c);renderCart()}
+  function addToCart(id,qty=1){
+    const cart = getCart();
+    cart[id] = (cart[id]||0)+Number(qty);
+    saveCart(cart);
+  }
+
+  function renderCart(){
+    const cart = getCart();
+    const products = getProducts();
+    const listEl = byId('cartList');
+    const items = Object.keys(cart).map(id=>{
+      const prod = products.find(p=>p.id===id);
+      return {...prod,qty:cart[id]}
+    });
+    byId('cartCount').textContent = `(${items.reduce((s,i)=>s+i.qty,0)})`;
+    if(items.length===0) listEl.innerHTML='<div class="muted">Cart is empty</div>';
+    else listEl.innerHTML = items.map(i=>`
+      <div class="cart-item">
+        <img src="${i.image}" alt="" />
+        <div style="flex:1">
+          <div class="small">${i.title}</div>
+          <div class="muted small">${format(i.price)} · ${i.qty} ×</div>
+        </div>
+        <div class="qty">
+          <button class="btn ghost" onclick="changeQty('${i.id}', -1)">-</button>
+          <div class="small big">${i.qty}</div>
+          <button class="btn ghost" onclick="changeQty('${i.id}', 1)">+</button>
+          <button class="btn ghost" onclick="removeFromCart('${i.id}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+    const subtotal = items.reduce((s,i)=>s+i.price*i.qty,0);
+    byId('subtotal').textContent = format(subtotal);
+  }
+
+  function changeQty(id,delta){
+    const cart = getCart();
+    cart[id] = (cart[id]||0)+delta;
+    if(cart[id]<=0) delete cart[id];
+    saveCart(cart);
+  }
+  function removeFromCart(id){const cart=getCart();delete cart[id];saveCart(cart)}
+  byId('emptyCart').addEventListener('click',()=>{storage.set('cart',{});renderCart()});
+
+  /* ----------------------------- Auth (simple local) ---------------------------- */
+  function currentUser(){return storage.get('currentUser')}
+  function setCurrentUser(u){storage.set('currentUser',u);renderUserArea()}
+
+  function renderUserArea(){
+    const ua = byId('userArea');
+    const user = currentUser();
+    if(!user){
+      ua.innerHTML = '<div class="muted">Not signed in</div><div style="margin-top:.5rem"><button class="btn" onclick="openLogin()">Login / Register</button></div>';
+    } else {
+      ua.innerHTML = `<div class="small">Signed in as <strong>${user.username}</strong> ${user.isAdmin?'<span class="admin-badge">Admin</span>':''}</div>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem"><button class="btn" onclick="logout()">Sign out</button><button class="btn ghost" onclick="viewOrders()">My Orders</button></div>`;
+    }
+  }
+
+  function openLogin(){
+    const modal = byId('modalContent');
+    modal.innerHTML = `
+      <div class="flex">
+        <div class="col">
+          <h3>Login</h3>
+          <input id="loginUser" placeholder="username" />
+          <input id="loginPass" placeholder="password" type="password" />
+          <div style="margin-top:.5rem"><button class="btn" onclick="login()">Login</button></div>
+        </div>
+        <div class="col">
+          <h3>Register</h3>
+          <input id="regUser" placeholder="username" />
+          <input id="regPass" placeholder="password" type="password" />
+          <div style="margin-top:.5rem"><button class="btn" onclick="register()">Register</button></div>
+        </div>
+      </div>
+    `; showModal();
+  }
+
+  function login(){
+    const u = byId('loginUser').value.trim(); const p = byId('loginPass').value;
+    const users = storage.get('users')||[];
+    const found = users.find(x=>x.username===u && x.password===p);
+    if(!found) return alert('Invalid credentials for demo.');
+    setCurrentUser({username:found.username,isAdmin:found.isAdmin||false});
+    closeModal();
+    renderCart();
+  }
+  function register(){
+    const u = byId('regUser').value.trim(); const p = byId('regPass').value;
+    if(!u||!p) return alert('Enter username and password');
+    const users = storage.get('users')||[];
+    if(users.some(x=>x.username===u)) return alert('Username exists');
+    users.push({username:u,password:p,isAdmin:false,orders:[]});
+    storage.set('users',users);
+    alert('Registered. You can login now.');
+  }
+  function logout(){storage.del('currentUser');renderUserArea()}
+
+  /* ----------------------------- Checkout & Orders ---------------------------- */
+  function openCheckout(){
+    const cart = getCart(); if(Object.keys(cart).length===0) return alert('Cart empty');
+    const modal = byId('modalContent');
+    modal.innerHTML = `
+      <h3>Checkout</h3>
+      <form id="checkoutForm">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <input id="cname" placeholder="Full name" required />
+          <input id="cphone" placeholder="Phone" required />
+        </div>
+        <input id="caddress" placeholder="Address" required />
+        <div style="margin-top:.5rem">Payment method (simulation)</div>
+        <select id="cpay" style="margin-top:.25rem">
+          <option value="cod">Cash on delivery</option>
+          <option value="card">Card (simulate)</option>
+        </select>
+        <div style="margin-top:.6rem;display:flex;gap:.5rem"><button class="btn" type="button" onclick="placeOrder()">Place Order</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+      </form>
+    `; showModal();
+  }
+
+  function placeOrder(){
+    const user = currentUser();
+    if(!user) return alert('Please login to place order');
+    const name = byId('cname').value.trim(); const phone = byId('cphone').value.trim(); const address = byId('caddress').value.trim();
+    if(!name||!phone||!address) return alert('Fill address details');
+    const cart = getCart(); const products = getProducts();
+    const items = Object.keys(cart).map(id=>({id,qty:cart[id],product:products.find(p=>p.id===id)}));
+    const subtotal = items.reduce((s,i)=>s+i.product.price*i.qty,0);
+    const order = {id:'o'+Date.now(),user:user.username,items,subtotal,address,name,phone,created: new Date().toISOString()};
+    const orders = storage.get('orders')||[]; orders.push(order); storage.set('orders',orders);
+    // attach to user record
+    const users = storage.get('users')||[]; const me = users.find(u=>u.username===user.username); if(me){me.orders = me.orders||[]; me.orders.push(order); storage.set('users',users)}
+    storage.set('cart',{});
+    closeModal();
+    alert('Order placed — ID: '+order.id);
+    renderCart();
+  }
+
+  function viewOrders(){
+    const user = currentUser(); if(!user) return openLogin();
+    const users = storage.get('users')||[]; const me = users.find(u=>u.username===user.username);
+    const list = (me && me.orders && me.orders.length)? me.orders : [];
+    const modal = byId('modalContent');
+    modal.innerHTML = `<h3>My Orders</h3>` + (list.length? list.map(o=>`
+      <div style="border:1px solid rgba(255,255,255,0.03);padding:.5rem;border-radius:8px;margin-top:.4rem">
+        <div><strong>${o.id}</strong> · ${new Date(o.created).toLocaleString()}</div>
+        <div class="muted small">Total: ${format(o.subtotal)}</div>
+        <div style="margin-top:.3rem">${o.items.map(it=>`<div class="small">${it.product.title} × ${it.qty}</div>`).join('')}</div>
+      </div>
+    `).join('') : '<div class="muted">No orders yet</div>');
+    showModal();
+  }
+
+  /* ----------------------------- Admin ---------------------------- */
+  function openAdmin(){
+    const user = currentUser(); if(!user) return openLogin(); if(!user.isAdmin) return alert('Admin only (demo)');
+    const modal = byId('modalContent');
+    const products = getProducts();
+    modal.innerHTML = `
+      <h3>Admin — Manage Products</h3>
+      <form id="addProductForm" style="display:grid;grid-template-columns:1fr 120px;gap:.5rem">
+        <input id="newTitle" placeholder="Title" required />
+        <input id="newPrice" placeholder="Price" type="number" required />
+        <input id="newCat" placeholder="Category" required />
+        <input id="newImg" placeholder="Image URL (online)" required />
+        <textarea id="newDesc" placeholder="Short description"></textarea>
+        <button class="btn" type="button" onclick="addProduct()">Add product</button>
+      </form>
+      <div style="margin-top:.6rem">${products.map(p=>`
+        <div style="display:flex;gap:.5rem;align-items:center;padding:.4rem;border:1px solid rgba(255,255,255,0.03);border-radius:8px;margin-top:.4rem">
+          <img src="${p.image}" style="width:64px;height:56px;object-fit:cover;border-radius:6px" />
+          <div style="flex:1"><div class="small">${p.title}</div><div class="muted small">${p.category} · ${format(p.price)}</div></div>
+          <div style="display:flex;gap:.4rem"><button class="btn ghost" onclick="editProduct('${p.id}')">Edit</button><button class="btn ghost" onclick="deleteProduct('${p.id}')">Delete</button></div>
+        </div>
+      `).join('')}</div>
+    `; showModal();
+  }
+
+  function addProduct(){
+    const title = byId('newTitle').value.trim(); const price = Number(byId('newPrice').value); const cat = byId('newCat').value.trim(); const img = byId('newImg').value.trim(); const desc = byId('newDesc').value.trim();
+    if(!title||!price||!cat||!img) return alert('Fill product details');
+    const products = getProducts(); const id = 'p'+Date.now(); products.push({id,title,price,category:cat, rating:4.2,image:img,desc}); storage.set('products',products); renderProducts(); renderCategoryOptions(); openAdmin();
+  }
+  function deleteProduct(id){ if(!confirm('Delete?')) return; let products=getProducts(); products=products.filter(p=>p.id!==id); storage.set('products',products); renderProducts(); renderCategoryOptions(); openAdmin(); }
+  function editProduct(id){
+    const p = getProducts().find(x=>x.id===id);
+    const modal = byId('modalContent');
+    modal.innerHTML = `
+      <h3>Edit product</h3>
+      <input id="eTitle" value="${p.title}" />
+      <input id="ePrice" value="${p.price}" type="number" />
+      <input id="eCat" value="${p.category}" />
+      <input id="eImg" value="${p.image}" />
+      <textarea id="eDesc">${p.desc}</textarea>
+      <div style="margin-top:.5rem"><button class="btn" onclick="saveEdit('${p.id}')">Save</button><button class="btn ghost" onclick="openAdmin()">Cancel</button></div>
+    `; showModal();
+  }
+  function saveEdit(id){ const products=getProducts(); const p=products.find(x=>x.id===id); p.title=byId('eTitle').value; p.price=Number(byId('ePrice').value); p.category=byId('eCat').value; p.image=byId('eImg').value; p.desc=byId('eDesc').value; storage.set('products',products); renderProducts(); renderCategoryOptions(); openAdmin(); }
+
+  /* ----------------------------- Events ---------------------------- */
+  byId('q').addEventListener('input',renderProducts);
+  byId('categorySelect').addEventListener('change',renderProducts);
+  byId('sort').addEventListener('change',renderProducts);
+  byId('priceMax').addEventListener('input',renderProducts);
+  byId('checkoutBtn').addEventListener('click',openCheckout);
+  byId('loginBtn').addEventListener('click',openLogin);
+  byId('adminBtn').addEventListener('click',openAdmin);
+  byId('ordersBtn').addEventListener('click',viewOrders);
+  byId('clearStorage').addEventListener('click',()=>{ if(confirm('Reset demo?')) { localStorage.clear(); initDemo(); renderAll(); alert('Reset.'); } });
+
+  /* ----------------------------- Init render ---------------------------- */
+  function renderAll(){ renderCategoryOptions(); renderProducts(); renderCart(); renderUserArea(); }
+  renderAll();
+
+  // expose some functions for inline handlers
+  window.openDetails = openDetails; window.addToCart = addToCart; window.closeModal = closeModal; window.openLogin = openLogin; window.openAdmin = openAdmin; window.openCheckout = openCheckout; window.viewOrders = viewOrders; window.editProduct = editProduct; window.deleteProduct = deleteProduct; window.addProduct = addProduct; window.placeOrder = placeOrder; window.login = login; window.register = register;
+  </script>
+</body>
+</html>
