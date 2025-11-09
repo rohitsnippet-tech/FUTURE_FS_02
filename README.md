@@ -1,4 +1,4 @@
-# FUTURE_FS_02 - Mini E-Commerce (Vanilla JS)
+# FUTURE_FS_02 - Mini E-Commerce
 
 🧑‍💻 Developed by Rohit Kumar  
 🎓 Future Interns - Full Stack Web Development Internship (Task 2)
